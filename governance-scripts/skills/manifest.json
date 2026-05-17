@@ -1,0 +1,145 @@
+{
+  "version": "1.0",
+  "name": "GitHub Enterprise Governance",
+  "description": "Skills for provisioning and maintaining the GitHub Enterprise governance framework — repo/team factory, compliance sync, waiver dashboard, admin reports, and audit log queries.",
+  "skills_dir": ".",
+  "scripts_dir": "..",
+  "skills": [
+    {
+      "name": "governance-setup",
+      "file": "governance-setup.md",
+      "script": "../setup-all.sh",
+      "interactive": true,
+      "idempotent": true,
+      "description": "Full one-time governance framework setup (10 steps). Provisions governance repo, waiver system, compliance workflows, factory workflows, audit reporting, rulesets, labels, and base teams.",
+      "triggers": [
+        "set up governance",
+        "run governance setup",
+        "initialise governance",
+        "configure github enterprise governance",
+        "provision compliance framework",
+        "bootstrap governance"
+      ]
+    },
+    {
+      "name": "governance-new-repo",
+      "file": "new-repo.md",
+      "script": "../factory/new-repo.sh",
+      "interactive": true,
+      "idempotent": false,
+      "description": "Interactive 10-step wizard to request a new repository. Validates name, collects metadata, generates YAML, and opens a governance PR for admin approval.",
+      "triggers": [
+        "create a new repo",
+        "request a new repository",
+        "provision a repo",
+        "add a repository",
+        "new service repo",
+        "open a repo creation PR"
+      ]
+    },
+    {
+      "name": "governance-new-team",
+      "file": "new-team.md",
+      "script": "../factory/new-team.sh",
+      "interactive": true,
+      "idempotent": true,
+      "description": "Interactive wizard to create or update a GitHub team via the governance PR process. Collects slug, visibility, parent, maintainers, and members.",
+      "triggers": [
+        "create a new team",
+        "add a team",
+        "provision a team",
+        "set up a team",
+        "update team members",
+        "new github team"
+      ]
+    },
+    {
+      "name": "governance-sync-compliance",
+      "file": "sync-compliance.md",
+      "script": "../factory/sync-compliance.sh",
+      "interactive": false,
+      "idempotent": true,
+      "flags": {
+        "--dry-run": "Preview changes without writing",
+        "--repo <name>": "Target a single repository only"
+      },
+      "description": "Push the canonical compliance.yml template to all non-archived repos in the org. Supports dry-run and single-repo mode.",
+      "triggers": [
+        "sync compliance",
+        "update compliance workflow",
+        "push compliance.yml",
+        "propagate governance",
+        "update pipeline in all repos",
+        "sync governance changes"
+      ]
+    },
+    {
+      "name": "governance-admin-report",
+      "file": "admin-report.md",
+      "script": "../reports/admin-report.sh",
+      "interactive": false,
+      "idempotent": true,
+      "readonly": true,
+      "flags": {
+        "--org <name>": "Override the target organisation",
+        "--enterprise <slug>": "Include enterprise audit log events"
+      },
+      "description": "Read-only report: current org owners, repos with direct admin collaborators, teams with admin permission, platform-admins members, recent admin changes.",
+      "triggers": [
+        "admin report",
+        "who has admin access",
+        "list org owners",
+        "show admin changes",
+        "access review",
+        "privilege report",
+        "show org admins"
+      ]
+    },
+    {
+      "name": "governance-waiver-status",
+      "file": "waiver-status.md",
+      "script": "../reports/waiver-status.sh",
+      "interactive": false,
+      "idempotent": true,
+      "readonly": true,
+      "flags": {
+        "--all": "Include recently expired and rejected waivers",
+        "--repo <name>": "Filter results to a specific repository"
+      },
+      "description": "Colour-coded waiver dashboard: pending approvals, active waivers with expiry countdowns, waivers expiring in the next 7 days.",
+      "triggers": [
+        "waiver status",
+        "show waivers",
+        "active waivers",
+        "pending waivers",
+        "compliance exceptions",
+        "waiver report",
+        "expiring waivers",
+        "waiver dashboard"
+      ]
+    },
+    {
+      "name": "governance-audit-query",
+      "file": "audit-query.md",
+      "script": "../reports/audit-query.sh",
+      "interactive": true,
+      "idempotent": true,
+      "readonly": true,
+      "flags": {
+        "--org <name>": "Override the target organisation",
+        "--enterprise <slug>": "Use enterprise-level audit log"
+      },
+      "description": "Interactive 10-item audit log query menu. Covers admin changes, ruleset bypasses, repo creation, secrets, webhooks, dismissed alerts, app installs, team changes, settings. CSV export available.",
+      "triggers": [
+        "query audit log",
+        "search audit events",
+        "audit log",
+        "find ruleset bypasses",
+        "check secret changes",
+        "export audit log",
+        "audit investigation",
+        "show dismissed alerts"
+      ]
+    }
+  ]
+}

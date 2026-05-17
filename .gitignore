@@ -1,0 +1,66 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+.TemporaryItems
+
+# Xcode
+build/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/xcshareddata/xcschemes/*.xcscheme
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+xcuserstate
+*.xccheckout
+*.moved-aside
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Packages/
+Package.resolved
+
+# CocoaPods
+Pods/
+*.xcworkspace
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# Reports & transcripts (never commit)
+*.crash
+*.log
+*.xcresult
+reports/
+transcripts/
+*.pdf
+*.csv
+*.xlsx
+
+# Governance script local config (contains tokens/org names)
+~/.github-governance-setup.env
+
+# Environment / secrets
+.env
+.env.*
+*.secret
+secrets/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
