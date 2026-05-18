@@ -21,17 +21,18 @@ done
 step "Creating org-level ruleset: baseline-security-controls"
 info "This ruleset applies to ALL repos in $GITHUB_ORG — no repo can override it."
 
-# Required status checks — these must match exact job names in compliance.yml
+# Required status checks — integration_id must be OMITTED (null is invalid in API)
 REQUIRED_CHECKS=$(jq -n '[
-  {"context": "CodeQL / Analyze",               "integration_id": null},
-  {"context": "SonarQube Analysis",             "integration_id": null},
-  {"context": "Nexus IQ Policy Evaluation",     "integration_id": null},
-  {"context": "Unit Tests & Coverage",          "integration_id": null},
-  {"context": "Integration Tests",              "integration_id": null},
-  {"context": "waiver-check",                   "integration_id": null}
+  {"context": "CodeQL / Analyze"},
+  {"context": "SonarQube Analysis"},
+  {"context": "Nexus IQ Policy Evaluation"},
+  {"context": "Unit Tests & Coverage"},
+  {"context": "Integration Tests"},
+  {"context": "waiver-check"}
 ]')
 
 # Build the ruleset payload
+# Note: allowed_merge_methods is NOT an input param (server-controlled); omit it
 RULESET_PAYLOAD=$(jq -n \
   --arg name "baseline-security-controls" \
   --argjson checks "$REQUIRED_CHECKS" \
@@ -60,7 +61,7 @@ RULESET_PAYLOAD=$(jq -n \
           dismiss_stale_reviews_on_push: true,
           require_code_owner_review: true,
           require_last_push_approval: true,
-          allowed_merge_methods: ["merge", "squash", "rebase"]
+          required_review_thread_resolution: false
         }
       },
       {
@@ -134,7 +135,7 @@ GOVERNANCE_RULESET=$(jq -n \
           dismiss_stale_reviews_on_push: true,
           require_code_owner_review: true,
           require_last_push_approval: true,
-          allowed_merge_methods: ["merge", "squash"]
+          required_review_thread_resolution: false
         }
       }
     ]
