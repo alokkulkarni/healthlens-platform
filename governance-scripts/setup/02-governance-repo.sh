@@ -29,7 +29,7 @@ else
   REPO_URL=$(gh api --method POST "/orgs/$PLATFORM_ORG/repos" \
     --field name="$GOVERNANCE_REPO" \
     --field description="Central governance — compliance controls, waiver registry, repo factory, and audit reports" \
-    --field visibility=private \
+    --field visibility=internal \
     --field has_issues=true \
     --field has_projects=false \
     --field has_wiki=false \

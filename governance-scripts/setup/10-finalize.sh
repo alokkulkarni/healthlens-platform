@@ -21,37 +21,76 @@ load_config
 : "${GOVERNANCE_REPO:?Set --governance-repo}"
 : "${GITHUB_ORG:=${PLATFORM_ORG}}"
 
+TWO_ORG_MODE=false
+[[ "$PLATFORM_ORG" != "$GITHUB_ORG" ]] && TWO_ORG_MODE=true
+
 GOV_URL="https://github.com/$PLATFORM_ORG/$GOVERNANCE_REPO"
-SETTINGS_URL="$GOV_URL/settings/secrets/actions"
+GOV_SECRETS_URL="$GOV_URL/settings/secrets/actions"
+ENG_SECRETS_URL="https://github.com/organizations/$GITHUB_ORG/settings/secrets/actions"
 
 header "Setup Complete — Final Checklist"
 
-echo ""
-echo -e "${BOLD}The following GitHub Actions secrets must be set manually${NC}"
-echo -e "${DIM}Go to: $SETTINGS_URL${NC}"
-echo ""
+if $TWO_ORG_MODE; then
+  echo ""
+  echo -e "  ${BOLD}Two-org isolated architecture:${NC}"
+  echo -e "  ${GREEN}Governance org:${NC}   $PLATFORM_ORG  (platform-admins only)"
+  echo -e "  ${GREEN}Engineering org:${NC}  $GITHUB_ORG  (all engineers)"
+  echo -e "  ${GREEN}Governance repo:${NC}  $GOV_URL"
+  echo -e "  ${DIM}Visibility: internal — accessible within enterprise, not public${NC}"
+fi
 
-# Secrets table
-printf "%-40s %-15s %s\n" "SECRET NAME" "SCOPE" "PURPOSE"
+echo ""
+echo -e "${BOLD}━━━ SECRETS: Governance Repo ($PLATFORM_ORG/$GOVERNANCE_REPO) ━━━${NC}"
+echo -e "${DIM}→ $GOV_SECRETS_URL${NC}"
+echo ""
+printf "  %-38s %s\n" "SECRET NAME" "PURPOSE"
 divider
-printf "%-40s %-15s %s\n" "GOVERNANCE_READ_TOKEN"    "org (all repos)" "PAT with issues:read on governance repo — used by waiver-check in app repos"
-printf "%-40s %-15s %s\n" "REPO_FACTORY_TOKEN"       "governance repo" "PAT/App token with repo+admin:org — used by repo and team factory"
-printf "%-40s %-15s %s\n" "AUDIT_REPORT_TOKEN"       "governance repo" "PAT with read:org + read:audit_log — used by central audit report"
-printf "%-40s %-15s %s\n" "SONAR_TOKEN"              "org (all repos)" "SonarQube auth token for compliance workflow"
-printf "%-40s %-15s %s\n" "SONAR_HOST_URL"           "org (all repos)" "SonarQube server URL (e.g. https://sonar.mycompany.com)"
-printf "%-40s %-15s %s\n" "NEXUS_IQ_URL"             "org (all repos)" "Nexus IQ server URL"
-printf "%-40s %-15s %s\n" "NEXUS_IQ_USERNAME"        "org (all repos)" "Nexus IQ service account username"
-printf "%-40s %-15s %s\n" "NEXUS_IQ_PASSWORD"        "org (all repos)" "Nexus IQ service account password"
-printf "%-40s %-15s %s\n" "STAGING_APP_URL"          "org (all repos)" "DAST target URL — staging environment for ZAP scans"
+printf "  %-38s %s\n" "REPO_FACTORY_TOKEN" "PAT with repo+admin:org on $GITHUB_ORG — factory creates repos there"
+printf "  %-38s %s\n" "AUDIT_REPORT_TOKEN" "PAT with read:org+read:audit_log on $GITHUB_ENTERPRISE — audit reports"
 
 echo ""
-
-# Variables
-echo -e "${BOLD}Repository Variables${NC} (Settings → Variables):"
+echo -e "${BOLD}━━━ SECRETS: Engineering Org ($GITHUB_ORG) — all repos ━━━${NC}"
+echo -e "${DIM}→ $ENG_SECRETS_URL${NC}"
 echo ""
-printf "%-40s %s\n" "VARIABLE NAME" "VALUE"
+printf "  %-38s %s\n" "SECRET NAME" "PURPOSE"
 divider
-printf "%-40s %s\n" "GITHUB_ORG_NAME" "$GITHUB_ORG (the engineering org repo factory creates repos in)"
+printf "  %-38s %s\n" "GOVERNANCE_READ_TOKEN" "PAT with issues:read on $PLATFORM_ORG/$GOVERNANCE_REPO only"
+printf "  %-38s %s\n" "" "(used by waiver-check in every engineering repo's compliance workflow)"
+printf "  %-38s %s\n" "SONAR_TOKEN"           "SonarQube auth token"
+printf "  %-38s %s\n" "SONAR_HOST_URL"        "SonarQube server URL (e.g. https://sonar.meridian.io)"
+printf "  %-38s %s\n" "NEXUS_IQ_URL"          "Nexus IQ server URL"
+printf "  %-38s %s\n" "NEXUS_IQ_USERNAME"     "Nexus IQ service account username"
+printf "  %-38s %s\n" "NEXUS_IQ_PASSWORD"     "Nexus IQ service account password"
+printf "  %-38s %s\n" "STAGING_APP_URL"       "DAST target — staging env URL for ZAP scans"
+
+echo ""
+echo -e "${BOLD}━━━ REPOSITORY VARIABLE: Governance Repo ━━━${NC}"
+echo -e "${DIM}→ $GOV_URL/settings/variables/actions${NC}"
+echo ""
+printf "  %-38s %s\n" "VARIABLE NAME" "VALUE"
+divider
+printf "  %-38s %s\n" "GITHUB_ORG_NAME" "$GITHUB_ORG"
+
+if $TWO_ORG_MODE; then
+  echo ""
+  echo -e "${BOLD}━━━ CROSS-ORG ACCESS EXPLAINED ━━━${NC}"
+  echo ""
+  echo -e "  ${CYAN}Engineering repo → Governance repo (read-only):${NC}"
+  echo -e "  GOVERNANCE_READ_TOKEN in $GITHUB_ORG allows compliance workflows to"
+  echo -e "  check if a waiver exists in $PLATFORM_ORG/$GOVERNANCE_REPO."
+  echo -e "  This PAT should have ONLY issues:read on the governance repo — nothing else."
+  echo ""
+  echo -e "  ${CYAN}Governance repo → Engineering org (write):${NC}"
+  echo -e "  REPO_FACTORY_TOKEN in the governance repo allows factory.yml workflows"
+  echo -e "  to create repos and teams in $GITHUB_ORG."
+  echo -e "  This PAT should be a service account member of $PLATFORM_ORG only."
+  echo ""
+  echo -e "  ${CYAN}Reusable workflow cross-org reference:${NC}"
+  echo -e "  Engineering repos call:"
+  echo -e "  ${DIM}uses: $PLATFORM_ORG/$GOVERNANCE_REPO/.github/workflows/waiver-check.yml@main${NC}"
+  echo -e "  This works because the governance repo is ${BOLD}internal${NC} (not private) —"
+  echo -e "  visible to all orgs within the $GITHUB_ENTERPRISE enterprise."
+fi
 
 echo ""
 divider
@@ -103,47 +142,58 @@ else
 fi
 
 step "Verifying teams"
-for slug in platform-admins compliance-team internal-audit all-engineers; do
+for slug in platform-admins compliance-team internal-audit; do
   if team_exists "$PLATFORM_ORG" "$slug"; then
-    success "  Team: $slug"
+    success "  Team (governance): $slug"
   else
-    warn "  Missing team: $slug — re-run step 9 (09-base-teams.sh)"
+    warn "  Missing team in $PLATFORM_ORG: $slug — re-run step 9"
   fi
 done
+if $TWO_ORG_MODE; then
+  for slug in all-engineers security-reviewers; do
+    if team_exists "$GITHUB_ORG" "$slug"; then
+      success "  Team (engineering): $slug"
+    else
+      warn "  Missing team in $GITHUB_ORG: $slug — re-run step 9"
+    fi
+  done
+fi
 
 header "Next Steps"
 
 cat << NEXTSTEPS
-  1. Set all secrets listed above in the governance repository
-     → $SETTINGS_URL
+  1. Create a dedicated service-account user (e.g. meridian-governance-bot)
+     Add it as a member of $PLATFORM_ORG only — NOT $GITHUB_ORG
 
-  2. Set GOVERNANCE_READ_TOKEN as an org-level secret so all engineering repos can use it
-     → https://github.com/organizations/$GITHUB_ORG/settings/secrets/actions
+  2. Generate two PATs from that service account:
+     a) GOVERNANCE_READ_TOKEN — scope: issues:read on $PLATFORM_ORG/$GOVERNANCE_REPO only
+        Set as org-level secret in $GITHUB_ORG (engineering org):
+        → $ENG_SECRETS_URL
 
-  3. Add the current user/bot to platform-admins team
+     b) REPO_FACTORY_TOKEN — scope: repo + admin:org on $GITHUB_ORG
+        Set as repo-level secret in $PLATFORM_ORG/$GOVERNANCE_REPO:
+        → $GOV_SECRETS_URL
+
+  3. Generate AUDIT_REPORT_TOKEN — scope: read:org + read:audit_log
+     Set as repo-level secret in $PLATFORM_ORG/$GOVERNANCE_REPO:
+     → $GOV_SECRETS_URL
+
+  4. Add current user to platform-admins team (governance org only):
      → https://github.com/orgs/$PLATFORM_ORG/teams/platform-admins
 
-  4. Test the repo factory end-to-end:
-     $ bash governance-scripts/factory/new-repo.sh
+  5. Test the repo factory: $ bash governance-scripts/factory/new-repo.sh
 
-  5. Test the team factory:
-     $ bash governance-scripts/factory/new-team.sh
+  6. Test the team factory:  $ bash governance-scripts/factory/new-team.sh
 
-  6. Manually trigger the compliance report to verify it works:
+  7. Trigger compliance report:
      $ gh workflow run waiver-report.yml --repo $PLATFORM_ORG/$GOVERNANCE_REPO
 
-  7. Manually trigger the audit report:
+  8. Trigger audit report:
      $ gh workflow run central-audit-report.yml --repo $PLATFORM_ORG/$GOVERNANCE_REPO
 
-  8. Verify a real PR in an app repo has all compliance checks running
-     (After adding compliance.yml to the repo via factory or manually)
+  9. Verify a real PR in an engineering repo has all compliance checks running.
 
-  9. Brief your team:
-     - Engineers: how to request a repo (repos/_template.yml PR)
-     - Engineers: how to raise a waiver (Issues → Waiver Request)
-     - Risk owners: how to approve (/approve-waiver comment)
-     - Compliance team: where to find weekly reports (Issues → compliance-report label)
-     - Internal Audit: access to $GOV_URL
+  10. Brief your teams on waiver requests, repo requests, and compliance reports.
 
 NEXTSTEPS
 

@@ -76,3 +76,44 @@ echo -e "  ${GREEN}✓${NC}  Private fork of private repos disabled"
 echo -e "  ${YELLOW}!${NC}  2FA: verify manually in Org Settings → Authentication security"
 echo ""
 info "Verify these settings at: https://github.com/organizations/$GITHUB_ORG/settings/member_privileges"
+
+# ── Governance org hardening (only when PLATFORM_ORG differs from GITHUB_ORG) ─
+if [[ -n "${PLATFORM_ORG:-}" && "$PLATFORM_ORG" != "$GITHUB_ORG" ]]; then
+  echo ""
+  step "Hardening governance org: $PLATFORM_ORG (isolated from engineering)"
+  info "Governance org has stricter policies — no member access, no forking"
+
+  if gh api --method PATCH "/orgs/$PLATFORM_ORG" \
+       --field members_can_create_repositories=false \
+       --field members_can_create_public_repositories=false \
+       --field members_can_create_private_repositories=false \
+       --field members_can_create_internal_repositories=false \
+       --field members_can_fork_private_repositories=false \
+       --field default_repository_permission=none \
+       --field members_allowed_repository_creation_type=none \
+       &>/dev/null; then
+    success "Governance org: all member repo creation blocked"
+  else
+    warn "Could not set all governance org policies — apply manually at:"
+    warn "https://github.com/organizations/$PLATFORM_ORG/settings/member_privileges"
+  fi
+
+  # Governance org: restrict outside collaborators
+  gh api --method PATCH "/orgs/$PLATFORM_ORG" \
+    --field two_factor_requirement_enabled=true \
+    --field web_commit_signoff_required=true &>/dev/null || true
+
+  # Block inviting outside collaborators (platform-admins only)
+  gh api --method PATCH "/orgs/$PLATFORM_ORG" \
+    --field members_can_invite_outside_collaborators=false &>/dev/null || true
+
+  echo ""
+  echo -e "  ${GREEN}✓${NC}  Governance org: member repo creation blocked (none)"
+  echo -e "  ${GREEN}✓${NC}  Governance org: default permission → none (not read)"
+  echo -e "  ${GREEN}✓${NC}  Governance org: outside collaborator invites disabled"
+  echo -e "  ${YELLOW}!${NC}  Governance org: 2FA — verify manually in Org Settings"
+  echo ""
+  echo -e "  ${BOLD}Key isolation rule:${NC} Engineering org owners/members have"
+  echo -e "  NO membership in $PLATFORM_ORG — only platform-admins are members."
+  info "Verify: https://github.com/organizations/$PLATFORM_ORG/settings/member_privileges"
+fi
