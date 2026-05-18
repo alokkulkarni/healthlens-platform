@@ -26,7 +26,7 @@ step "Creating governance repository: $PLATFORM_ORG/$GOVERNANCE_REPO"
 if repo_exists "$PLATFORM_ORG" "$GOVERNANCE_REPO"; then
   warn "Repository already exists: $PLATFORM_ORG/$GOVERNANCE_REPO — skipping creation"
 else
-  gh api --method POST "/orgs/$PLATFORM_ORG/repos" \
+  REPO_URL=$(gh api --method POST "/orgs/$PLATFORM_ORG/repos" \
     --field name="$GOVERNANCE_REPO" \
     --field description="Central governance — compliance controls, waiver registry, repo factory, and audit reports" \
     --field visibility=private \
@@ -35,7 +35,8 @@ else
     --field has_wiki=false \
     --field delete_branch_on_merge=true \
     --field auto_init=true \
-    --jq '.html_url' | xargs -I{} info "Created: {}"
+    --jq '.html_url')
+  info "Created: $REPO_URL"
   
   # Wait for GitHub to initialise the repo
   sleep 3
