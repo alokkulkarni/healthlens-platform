@@ -137,6 +137,13 @@ jobs:
       contents: read
       issues: write
     steps:
+      - name: Generate engineering app token
+        uses: actions/create-github-app-token@v1
+        id: eng-token
+        with:
+          app-id: \${{ secrets.GOVERNANCE_APP_ID }}
+          private-key: \${{ secrets.GOVERNANCE_APP_PRIVATE_KEY }}
+          owner: ${GITHUB_ORG}
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
@@ -153,11 +160,15 @@ jobs:
             echo \"EOF\" >> \"\$GITHUB_OUTPUT\"
           fi
 
+      - name: Install js-yaml
+        run: npm install js-yaml
+        working-directory: \${{ github.workspace }}
+
       - name: Provision repositories
         if: steps.changed.outputs.files != ''
         uses: actions/github-script@v7
         env:
-          FACTORY_TOKEN: \${{ secrets.REPO_FACTORY_TOKEN }}
+          FACTORY_TOKEN: \${{ steps.eng-token.outputs.token }}
           CHANGED_FILES: \${{ steps.changed.outputs.files }}
           ORG_NAME: \${{ vars.GITHUB_ORG_NAME }}
           GOVERNANCE_REPO: ${PLATFORM_ORG}/${GOVERNANCE_REPO}
@@ -292,11 +303,15 @@ jobs:
             echo \"EOF\" >> \"\$GITHUB_OUTPUT\"
           fi
 
+      - name: Install js-yaml
+        run: npm install js-yaml
+        working-directory: \${{ github.workspace }}
+
       - name: Provision teams
         if: steps.changed.outputs.files != ''
         uses: actions/github-script@v7
         env:
-          FACTORY_TOKEN: \${{ secrets.REPO_FACTORY_TOKEN }}
+          FACTORY_TOKEN: \${{ steps.eng-token.outputs.token }}
           CHANGED_FILES: \${{ steps.changed.outputs.files }}
           ORG_NAME: \${{ vars.GITHUB_ORG_NAME }}
         with:
