@@ -43,35 +43,71 @@ fi
 echo ""
 echo -e "${BOLD}━━━ STEP A: Create GitHub App (one-time) ━━━${NC}"
 echo ""
-cat << 'APPSETUP'
-  1. Go to: https://github.com/organizations/PLATFORM_ORG/settings/apps/new
-     (replace PLATFORM_ORG with your governance org name)
-
-  2. Name: meridian-governance-bot  (or similar)
-     Homepage: https://github.com/PLATFORM_ORG/GOVERNANCE_REPO
-
-  3. Permissions — Repository:
-       Contents:       Read & Write  (push files to repos)
-       Issues:         Read          (read waivers from governance repo)
-       Pull requests:  Read          (PR context in waiver checks)
-       Workflows:      Read & Write  (push workflow files)
-     Permissions — Organisation:
-       Members:        Read & Write  (manage teams)
-       Administration: Read & Write  (create repos, set rulesets)
-       Audit log:      Read          (central audit reports)
-
-  4. Uncheck "Expire user authorization tokens"
-     Check "Request user authorization (OAuth) during installation": NO
-     Active: YES
-
-  5. After creation — generate a private key (downloads a .pem file)
-     Note down the App ID (numeric, shown at the top of the app page)
-
-  6. Install the app on BOTH orgs:
-     → Governance org: https://github.com/organizations/PLATFORM_ORG/settings/apps
-     → Engineering org: https://github.com/organizations/GITHUB_ORG/settings/apps
-     For each: Install → select "All repositories"
-APPSETUP
+echo -e "  ${CYAN}Open this URL to create the app:${NC}"
+echo -e "  ${BOLD}https://github.com/organizations/${PLATFORM_ORG}/settings/apps/new${NC}"
+echo ""
+echo -e "  Fill in the form ${BOLD}exactly${NC} as follows:"
+echo ""
+echo -e "  ${BOLD}── Section: GitHub App name ──${NC}"
+printf "  %-36s %s\n" "GitHub App name:"      "${PLATFORM_ORG}-bot"
+printf "  %-36s %s\n" "Homepage URL:"         "https://github.com/${PLATFORM_ORG}/${GOVERNANCE_REPO}"
+printf "  %-36s %s\n" "Description (opt.):"   "Governance automation bot for ${PLATFORM_ORG}/${GOVERNANCE_REPO}"
+echo ""
+echo -e "  ${BOLD}── Section: Identifying and authorizing users ──${NC}"
+printf "  %-36s %s\n" "Callback URL:"         "(leave blank)"
+printf "  %-36s %s\n" "Setup URL:"            "(leave blank)"
+printf "  %-36s %s\n" "Expire user tokens:"   "UNCHECK  ← important"
+printf "  %-36s %s\n" "Request user auth:"    "UNCHECK"
+echo ""
+echo -e "  ${BOLD}── Section: Post installation ──${NC}"
+printf "  %-36s %s\n" "Setup URL:"            "(leave blank)"
+printf "  %-36s %s\n" "Redirect on update:"   "UNCHECK"
+echo ""
+echo -e "  ${BOLD}── Section: Webhook ──${NC}"
+printf "  %-36s %s\n" "Active:"               "UNCHECK  (no webhooks needed)"
+printf "  %-36s %s\n" "Webhook URL:"          "(leave blank)"
+echo ""
+echo -e "  ${BOLD}── Section: Permissions → Repository permissions ──${NC}"
+printf "  %-36s %s\n" "Actions:"              "Read & Write  (trigger/manage workflow runs)"
+printf "  %-36s %s\n" "Administration:"       "Read & Write  (create repos, set branch rules)"
+printf "  %-36s %s\n" "Checks:"               "Read & Write  (post compliance check results)"
+printf "  %-36s %s\n" "Contents:"             "Read & Write  (push files, create commits)"
+printf "  %-36s %s\n" "Issues:"               "Read          (read waiver issues)"
+printf "  %-36s %s\n" "Metadata:"             "Read          (mandatory — auto-selected)"
+printf "  %-36s %s\n" "Pull requests:"        "Read          (read PR context for waivers)"
+printf "  %-36s %s\n" "Secrets:"              "Read & Write  (set repo secrets in new repos)"
+printf "  %-36s %s\n" "Workflows:"            "Read & Write  (push .github/workflows/ files)"
+echo ""
+echo -e "  ${BOLD}── Section: Permissions → Organisation permissions ──${NC}"
+printf "  %-36s %s\n" "Administration:"       "Read & Write  (create repos, manage org settings)"
+printf "  %-36s %s\n" "Members:"              "Read & Write  (create/manage teams)"
+printf "  %-36s %s\n" "Organisation secrets:" "Read & Write  (set org-level secrets)"
+echo ""
+echo -e "  ${BOLD}── Section: Permissions → Account permissions ──${NC}"
+printf "  %-36s %s\n" "(none required)"       "(leave all as No access)"
+echo ""
+echo -e "  ${BOLD}── Section: Where can this GitHub App be installed? ──${NC}"
+printf "  %-36s %s\n" "Installation:"         "Only on this account  (${PLATFORM_ORG})"
+echo ""
+echo -e "  ${GREEN}▶ Click: Create GitHub App${NC}"
+echo ""
+echo -e "  ${BOLD}── After creation ──${NC}"
+echo -e "  On the app settings page that appears:"
+printf "  %-36s %s\n" "App ID:"               "Note this number — you will set it as GOVERNANCE_APP_ID"
+echo -e "  Scroll to ${BOLD}Private keys${NC} → click ${BOLD}Generate a private key${NC}"
+printf "  %-36s %s\n" "Private key (.pem):"   "Downloaded to your machine — contents = GOVERNANCE_APP_PRIVATE_KEY"
+echo ""
+echo -e "  ${BOLD}── Install the app on BOTH orgs ──${NC}"
+echo -e "  ${CYAN}Governance org:${NC}"
+echo -e "  https://github.com/organizations/${PLATFORM_ORG}/settings/apps/${PLATFORM_ORG}-bot/installations"
+echo -e "  → Install → All repositories"
+echo ""
+echo -e "  ${CYAN}Engineering org:${NC}"
+echo -e "  https://github.com/organizations/${GITHUB_ORG}/settings/apps"
+echo -e "  → Find '${PLATFORM_ORG}-bot' → Install → All repositories"
+echo ""
+echo -e "  ${DIM}Note: installing on the engineering org grants the app cross-org write access."
+echo -e "  The token is always scoped to one org at a time via the 'owner:' field in workflows.${NC}"
 
 echo -e "${BOLD}━━━ SECRETS: Governance Repo ($PLATFORM_ORG/$GOVERNANCE_REPO) ━━━${NC}"
 echo -e "${DIM}→ $GOV_SECRETS_URL${NC}"
@@ -193,78 +229,44 @@ fi
 
 header "Next Steps"
 
-cat << NEXTSTEPS
-  1. Add yourself to platform-admins team in $PLATFORM_ORG:
-     → https://github.com/orgs/$PLATFORM_ORG/teams/platform-admins
-
-━━━ STEP A: Create GitHub App (one-time) ━━━
-
-  2. Go to: https://github.com/organizations/$PLATFORM_ORG/settings/apps/new
-
-     Name:     meridian-governance-bot
-     Homepage: https://github.com/$PLATFORM_ORG/$GOVERNANCE_REPO
-
-     Repository permissions:
-       Contents:       Read & Write   (push files to repos)
-       Issues:         Read           (read waivers from governance repo)
-       Pull requests:  Read           (PR context in waiver checks)
-       Workflows:      Read & Write   (push workflow files)
-
-     Organisation permissions:
-       Members:        Read & Write   (manage teams)
-       Administration: Read & Write   (create repos, set rulesets)
-       Audit log:      Read           (central audit reports)
-
-     Uncheck "Expire user authorization tokens"
-     Check  "Active": YES
-     After creation: generate a private key (.pem file) and note the App ID
-
-  3. Install the app on BOTH orgs:
-     → Governance: https://github.com/organizations/$PLATFORM_ORG/settings/apps
-     → Engineering: https://github.com/organizations/$GITHUB_ORG/settings/apps
-     For each: Install → select "All repositories"
-
-━━━ STEP B: Set Secrets ━━━
-
-  4. In $PLATFORM_ORG/$GOVERNANCE_REPO (repo secrets):
-     → $GOV_SECRETS_URL
-       GOVERNANCE_APP_ID          — App ID (numeric, e.g. 12345)
-       GOVERNANCE_APP_PRIVATE_KEY — Contents of the .pem file
-
-  5. In $GITHUB_ORG (org-level secrets, available to all repos):
-     → $ENG_SECRETS_URL
-       GOVERNANCE_APP_ID          — Same App ID
-       GOVERNANCE_APP_PRIVATE_KEY — Same .pem contents
-       SONAR_TOKEN                — SonarQube auth token
-       SONAR_HOST_URL             — SonarQube server URL
-       NEXUS_IQ_URL               — Nexus IQ server URL
-       NEXUS_IQ_USERNAME          — Nexus IQ service account username
-       NEXUS_IQ_PASSWORD          — Nexus IQ service account password
-       STAGING_APP_URL            — DAST target staging URL
-
-━━━ STEP C: Set Repository Variable ━━━
-
-  6. In $PLATFORM_ORG/$GOVERNANCE_REPO (repo variables):
-     → https://github.com/$PLATFORM_ORG/$GOVERNANCE_REPO/settings/variables/actions
-       GITHUB_ORG_NAME = $GITHUB_ORG
-
-━━━ STEP D: Verify ━━━
-
-  7. Test the repo factory:  $ bash governance-scripts/factory/new-repo.sh
-
-  8. Test the team factory:  $ bash governance-scripts/factory/new-team.sh
-
-  9. Trigger compliance report:
-     $ gh workflow run waiver-report.yml --repo $PLATFORM_ORG/$GOVERNANCE_REPO
-
-  10. Trigger audit report:
-      $ gh workflow run central-audit-report.yml --repo $PLATFORM_ORG/$GOVERNANCE_REPO
-
-  11. Verify a real PR in an engineering repo has all compliance checks running.
-
-  12. Brief your teams on waiver requests, repo requests, and compliance reports.
-
-NEXTSTEPS
+echo -e "  ${BOLD}1. Add yourself to platform-admins team in ${PLATFORM_ORG}:${NC}"
+echo -e "     ${CYAN}https://github.com/orgs/${PLATFORM_ORG}/teams/platform-admins${NC}"
+echo ""
+echo -e "  ${BOLD}2. Create the GitHub App${NC} — see detailed form above (STEP A)"
+echo -e "     URL: ${CYAN}https://github.com/organizations/${PLATFORM_ORG}/settings/apps/new${NC}"
+echo ""
+echo -e "  ${BOLD}3. Install app on both orgs${NC} — see STEP A (install links above)"
+echo ""
+echo -e "  ${BOLD}4. Set secrets in ${PLATFORM_ORG}/${GOVERNANCE_REPO} (repo secrets):${NC}"
+echo -e "     ${CYAN}${GOV_SECRETS_URL}${NC}"
+printf "     %-38s %s\n" "GOVERNANCE_APP_ID"          "Numeric App ID from the app settings page"
+printf "     %-38s %s\n" "GOVERNANCE_APP_PRIVATE_KEY" "Full contents of the generated .pem file"
+echo ""
+echo -e "  ${BOLD}5. Set secrets in ${GITHUB_ORG} (org-level secrets):${NC}"
+echo -e "     ${CYAN}${ENG_SECRETS_URL}${NC}"
+printf "     %-38s %s\n" "GOVERNANCE_APP_ID"          "Same App ID as above"
+printf "     %-38s %s\n" "GOVERNANCE_APP_PRIVATE_KEY" "Same .pem contents as above"
+printf "     %-38s %s\n" "SONAR_TOKEN"                "SonarQube auth token"
+printf "     %-38s %s\n" "SONAR_HOST_URL"             "SonarQube server URL"
+printf "     %-38s %s\n" "NEXUS_IQ_URL"               "Nexus IQ server URL"
+printf "     %-38s %s\n" "NEXUS_IQ_USERNAME"          "Nexus IQ service account username"
+printf "     %-38s %s\n" "NEXUS_IQ_PASSWORD"          "Nexus IQ service account password"
+printf "     %-38s %s\n" "STAGING_APP_URL"            "DAST target staging URL for ZAP scans"
+echo ""
+echo -e "  ${BOLD}6. Set repo variable in ${PLATFORM_ORG}/${GOVERNANCE_REPO}:${NC}"
+echo -e "     ${CYAN}https://github.com/${PLATFORM_ORG}/${GOVERNANCE_REPO}/settings/variables/actions${NC}"
+printf "     %-38s %s\n" "GITHUB_ORG_NAME" "${GITHUB_ORG}"
+echo ""
+divider
+echo -e "  ${BOLD}7.${NC}  Test the repo factory:   ${CYAN}\$ bash governance-scripts/factory/new-repo.sh${NC}"
+echo -e "  ${BOLD}8.${NC}  Test the team factory:   ${CYAN}\$ bash governance-scripts/factory/new-team.sh${NC}"
+echo -e "  ${BOLD}9.${NC}  Trigger compliance report:"
+echo -e "       ${CYAN}\$ gh workflow run waiver-report.yml --repo ${PLATFORM_ORG}/${GOVERNANCE_REPO}${NC}"
+echo -e "  ${BOLD}10.${NC} Trigger audit report:"
+echo -e "       ${CYAN}\$ gh workflow run central-audit-report.yml --repo ${PLATFORM_ORG}/${GOVERNANCE_REPO}${NC}"
+echo -e "  ${BOLD}11.${NC} Verify a real PR in an engineering repo has all compliance checks running."
+echo -e "  ${BOLD}12.${NC} Brief your teams on waiver requests, repo requests, and compliance reports."
+echo ""
 
 echo -e "${BOLD}${GREEN}Setup complete. Governance framework is live at:${NC}"
 echo -e "  ${BOLD}$GOV_URL${NC}"
