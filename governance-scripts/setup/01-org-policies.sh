@@ -7,6 +7,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 
 # Parse args from setup-all.sh or accept env vars
+load_config
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --org)            GITHUB_ORG="$2";        shift 2 ;;
@@ -18,7 +20,6 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-load_config
 : "${GITHUB_ORG:?Set --org or GITHUB_ORG}"
 : "${GITHUB_ENTERPRISE:?Set --enterprise or GITHUB_ENTERPRISE}"
 

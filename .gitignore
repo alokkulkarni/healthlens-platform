@@ -44,8 +44,9 @@ fastlane/test_output
 *.crash
 *.log
 *.xcresult
-reports/
-transcripts/
+# Only ignore generated report output at project root, not governance-scripts/reports/ scripts
+/reports/
+/transcripts/
 *.pdf
 *.csv
 *.xlsx

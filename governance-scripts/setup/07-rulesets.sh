@@ -5,6 +5,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 
+load_config
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --org)             GITHUB_ORG="$2";      shift 2 ;;
@@ -14,7 +16,6 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-load_config
 : "${GITHUB_ORG:?Set --org}"
 
 step "Creating org-level ruleset: baseline-security-controls"

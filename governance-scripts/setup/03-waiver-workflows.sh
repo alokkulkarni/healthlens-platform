@@ -6,6 +6,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common.sh"
 
+load_config
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --platform-org)    PLATFORM_ORG="$2";    shift 2 ;;
@@ -15,7 +17,6 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-load_config
 : "${PLATFORM_ORG:?Set --platform-org}"
 : "${GOVERNANCE_REPO:?Set --governance-repo}"
 : "${GITHUB_ORG:=${PLATFORM_ORG}}"

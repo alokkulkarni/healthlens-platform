@@ -10,6 +10,8 @@ source "$SCRIPT_DIR/../lib/common.sh"
 DRY_RUN=false
 TARGET_REPO=""
 
+load_config
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run)  DRY_RUN=true; shift ;;
@@ -18,7 +20,6 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-load_config
 check_prereqs
 
 : "${PLATFORM_ORG:?Set PLATFORM_ORG in $CONFIG_FILE}"
