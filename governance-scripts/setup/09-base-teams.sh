@@ -33,7 +33,7 @@ create_team_with_members() {
 
   if team_exists "$org" "$slug"; then
     info "  Team already exists: $slug"
-    confirm "  Update members for $name?" || return
+    confirm "  Update members for $name?" || return 0
   else
     info "  Creating team: $slug"
     if ! gh api --method POST "/orgs/$org/teams" \
@@ -101,6 +101,60 @@ if $TWO_ORG_MODE; then
 
   create_team_with_members "$GITHUB_ORG" "security-reviewers" "Security Reviewers" \
     "Security champions — review GHAS alerts and waiver risk decisions" "closed" "false"
+
+  # bypass-approved team: empty by default.
+  # Members are added temporarily by the access-request approval workflow
+  # and give the user bypass-actor status on the baseline-security-controls ruleset.
+  # DO NOT add permanent members — this team should always be empty at rest.
+  step "Creating bypass-approved team in $GITHUB_ORG (empty by default)"
+  if ! team_exists "$GITHUB_ORG" "bypass-approved"; then
+    if gh api --method POST "/orgs/$GITHUB_ORG/teams" \
+         --field name="bypass-approved" \
+         --field description="Temporary bypass-actor team — members set by access-request workflow only. Must be empty at rest." \
+         --field privacy="secret" &>/dev/null; then
+      success "  bypass-approved team created (empty)"
+    else
+      warn "  Could not create bypass-approved team"
+    fi
+  else
+    info "  bypass-approved team already exists"
+  fi
+
+  # Wire bypass-approved team into baseline-security-controls ruleset as bypass actor
+  step "Adding bypass-approved team as bypass actor on baseline-security-controls"
+  BYPASS_TEAM_ID=$(gh api "/orgs/$GITHUB_ORG/teams/bypass-approved" --jq '.id' 2>/dev/null || echo "")
+  RULESET_ID=$(gh api "/orgs/$GITHUB_ORG/rulesets" \
+    --jq '.[] | select(.name == "baseline-security-controls") | .id' 2>/dev/null || echo "")
+
+  if [[ -n "$BYPASS_TEAM_ID" && -n "$RULESET_ID" ]]; then
+    # Fetch existing ruleset and append the bypass team to bypass_actors
+    CURRENT=$(gh api "/orgs/$GITHUB_ORG/rulesets/$RULESET_ID" 2>/dev/null || echo "")
+    if [[ -n "$CURRENT" ]]; then
+      UPDATED=$(echo "$CURRENT" | python3 -c "
+import json, sys
+rs = json.load(sys.stdin)
+actors = rs.get('bypass_actors', [])
+team_id = int('$BYPASS_TEAM_ID')
+# Add if not already present
+if not any(a.get('actor_id') == team_id and a.get('actor_type') == 'Team' for a in actors):
+    actors.append({'actor_id': team_id, 'actor_type': 'Team', 'bypass_mode': 'always'})
+rs['bypass_actors'] = actors
+print(json.dumps(rs))
+" 2>/dev/null || echo "")
+      if [[ -n "$UPDATED" ]]; then
+        if gh api --method PUT "/orgs/$GITHUB_ORG/rulesets/$RULESET_ID" \
+             --input - <<< "$UPDATED" &>/dev/null; then
+          success "  bypass-approved team (ID: $BYPASS_TEAM_ID) added as bypass actor on baseline-security-controls"
+        else
+          warn "  Could not update ruleset bypass actors — add manually:"
+          warn "  Org Settings → Rules → Rulesets → baseline-security-controls → Bypass list → Add team: bypass-approved"
+        fi
+      fi
+    fi
+  else
+    [[ -z "$BYPASS_TEAM_ID" ]] && warn "  Could not get bypass-approved team ID — run step 9 again after team is created"
+    [[ -z "$RULESET_ID" ]]     && warn "  baseline-security-controls ruleset not found — run step 7 first"
+  fi
 else
   # Single-org mode — all teams in the same org
   create_team_with_members "$PLATFORM_ORG" "all-engineers" "All Engineers" \

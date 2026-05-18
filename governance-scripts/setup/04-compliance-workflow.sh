@@ -36,7 +36,7 @@ on:
 # Shared waiver bypass script — injected into each job
 env:
   WAIVER_BYPASS_SCRIPT: |
-    const token = process.env.GOVERNANCE_READ_TOKEN;
+    const token = process.env.GOV_TOKEN;
     const prNumber = context.payload.pull_request?.number;
     const callingRepo = context.repo.owner + "/" + context.repo.repo;
     const govRepo = process.env.GOVERNANCE_REPO;
@@ -72,6 +72,13 @@ jobs:
       actions: read
       contents: read
     steps:
+      - name: Generate governance app token
+        uses: actions/create-github-app-token@v1
+        id: gov-token
+        with:
+          app-id: ${{ secrets.GOVERNANCE_APP_ID }}
+          private-key: ${{ secrets.GOVERNANCE_APP_PRIVATE_KEY }}
+          owner: '"$PLATFORM_ORG"'
       - uses: actions/checkout@v4
       - uses: github/codeql-action/init@v3
         with:
@@ -84,8 +91,8 @@ jobs:
         if: steps.codeql_scan.outcome == '"'"'failure'"'"'
         uses: actions/github-script@v7
         env:
-          GOVERNANCE_READ_TOKEN: ${{ secrets.GOVERNANCE_READ_TOKEN }}
-          GOVERNANCE_REPO: '"'"''"'"'
+          GOV_TOKEN: ${{ steps.gov-token.outputs.token }}
+          GOVERNANCE_REPO: '"$PLATFORM_ORG/$GOVERNANCE_REPO"'
           CHECK_NAME: "CodeQL / Analyze"
         with:
           script: eval(process.env.WAIVER_BYPASS_SCRIPT)
@@ -95,6 +102,13 @@ jobs:
     name: "SonarQube Analysis"
     runs-on: ubuntu-latest
     steps:
+      - name: Generate governance app token
+        uses: actions/create-github-app-token@v1
+        id: gov-token
+        with:
+          app-id: ${{ secrets.GOVERNANCE_APP_ID }}
+          private-key: ${{ secrets.GOVERNANCE_APP_PRIVATE_KEY }}
+          owner: '"$PLATFORM_ORG"'
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -108,8 +122,8 @@ jobs:
         if: steps.sonar_scan.outcome == '"'"'failure'"'"'
         uses: actions/github-script@v7
         env:
-          GOVERNANCE_READ_TOKEN: ${{ secrets.GOVERNANCE_READ_TOKEN }}
-          GOVERNANCE_REPO: '"'"''"'"'
+          GOV_TOKEN: ${{ steps.gov-token.outputs.token }}
+          GOVERNANCE_REPO: '"$PLATFORM_ORG/$GOVERNANCE_REPO"'
           CHECK_NAME: "SonarQube Analysis"
         with:
           script: eval(process.env.WAIVER_BYPASS_SCRIPT)
@@ -119,6 +133,13 @@ jobs:
     name: "Nexus IQ Policy Evaluation"
     runs-on: ubuntu-latest
     steps:
+      - name: Generate governance app token
+        uses: actions/create-github-app-token@v1
+        id: gov-token
+        with:
+          app-id: ${{ secrets.GOVERNANCE_APP_ID }}
+          private-key: ${{ secrets.GOVERNANCE_APP_PRIVATE_KEY }}
+          owner: '"$PLATFORM_ORG"'
       - uses: actions/checkout@v4
       - id: nexus_scan
         uses: sonatype-nexus-community/iq-github-action@main
@@ -133,8 +154,8 @@ jobs:
         if: steps.nexus_scan.outcome == '"'"'failure'"'"'
         uses: actions/github-script@v7
         env:
-          GOVERNANCE_READ_TOKEN: ${{ secrets.GOVERNANCE_READ_TOKEN }}
-          GOVERNANCE_REPO: '"'"''"'"'
+          GOV_TOKEN: ${{ steps.gov-token.outputs.token }}
+          GOVERNANCE_REPO: '"$PLATFORM_ORG/$GOVERNANCE_REPO"'
           CHECK_NAME: "Nexus IQ Policy Evaluation"
         with:
           script: eval(process.env.WAIVER_BYPASS_SCRIPT)
@@ -143,7 +164,19 @@ jobs:
   unit-tests:
     name: "Unit Tests & Coverage"
     runs-on: ubuntu-latest
+    outputs:
+      coverage_pct: ${{ steps.coverage_outputs.outputs.pct }}
+      tests_passed: ${{ steps.coverage_outputs.outputs.passed }}
+      tests_failed: ${{ steps.coverage_outputs.outputs.failed }}
+      tests_skipped: ${{ steps.coverage_outputs.outputs.skipped }}
     steps:
+      - name: Generate governance app token
+        uses: actions/create-github-app-token@v1
+        id: gov-token
+        with:
+          app-id: ${{ secrets.GOVERNANCE_APP_ID }}
+          private-key: ${{ secrets.GOVERNANCE_APP_PRIVATE_KEY }}
+          owner: '"$PLATFORM_ORG"'
       - uses: actions/checkout@v4
       - id: unit_test
         run: |
@@ -154,6 +187,31 @@ jobs:
           echo "Replace this with your test command"
           exit 0
         continue-on-error: true
+      - name: Export coverage outputs
+        id: coverage_outputs
+        if: always()
+        run: |
+          # ── Engineering teams: populate these env vars from your test runner ──
+          # Jest/NYC:
+          #   COVERAGE_PCT=$(jq '"'"'.total.lines.pct'"'"' coverage/coverage-summary.json 2>/dev/null)
+          # JaCoCo (Gradle):
+          #   COVERAGE_PCT=$(python3 -c "import xml.etree.ElementTree as ET; \
+          #     t=ET.parse('"'"'build/reports/jacoco/test/jacocoTestReport.xml'"'"').getroot(); \
+          #     c=t.find('"'"'.//counter[@type=\\\"LINE\\\"]'"'"'); \
+          #     cv=int(c.get('"'"'covered'"'"')); ms=int(c.get('"'"'missed'"'"')); \
+          #     print(round(cv/(cv+ms)*100,1))" 2>/dev/null)
+          # pytest-cov:
+          #   COVERAGE_PCT=$(python3 -c "import xml.etree.ElementTree as ET; \
+          #     print(round(float(ET.parse('"'"'coverage.xml'"'"').getroot().get('"'"'line-rate'"'"'))*100,1))")
+          echo "pct=${COVERAGE_PCT:-0}"    >> "$GITHUB_OUTPUT"
+          echo "passed=${TESTS_PASSED:-0}" >> "$GITHUB_OUTPUT"
+          echo "failed=${TESTS_FAILED:-0}" >> "$GITHUB_OUTPUT"
+          echo "skipped=${TESTS_SKIPPED:-0}" >> "$GITHUB_OUTPUT"
+        env:
+          COVERAGE_PCT:  ""   # Set by your test runner before this step
+          TESTS_PASSED:  ""   # e.g. from JUnit XML: xmllint --xpath ...
+          TESTS_FAILED:  ""
+          TESTS_SKIPPED: ""
       - uses: dorny/test-reporter@v1
         if: always()
         with:
@@ -165,8 +223,8 @@ jobs:
         if: steps.unit_test.outcome == '"'"'failure'"'"'
         uses: actions/github-script@v7
         env:
-          GOVERNANCE_READ_TOKEN: ${{ secrets.GOVERNANCE_READ_TOKEN }}
-          GOVERNANCE_REPO: '"'"''"'"'
+          GOV_TOKEN: ${{ steps.gov-token.outputs.token }}
+          GOVERNANCE_REPO: '"$PLATFORM_ORG/$GOVERNANCE_REPO"'
           CHECK_NAME: "Unit Tests & Coverage"
         with:
           script: eval(process.env.WAIVER_BYPASS_SCRIPT)
@@ -177,6 +235,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: [unit-tests]
     steps:
+      - name: Generate governance app token
+        uses: actions/create-github-app-token@v1
+        id: gov-token
+        with:
+          app-id: ${{ secrets.GOVERNANCE_APP_ID }}
+          private-key: ${{ secrets.GOVERNANCE_APP_PRIVATE_KEY }}
+          owner: '"$PLATFORM_ORG"'
       - uses: actions/checkout@v4
       - id: integration_test
         run: |
@@ -187,8 +252,8 @@ jobs:
         if: steps.integration_test.outcome == '"'"'failure'"'"'
         uses: actions/github-script@v7
         env:
-          GOVERNANCE_READ_TOKEN: ${{ secrets.GOVERNANCE_READ_TOKEN }}
-          GOVERNANCE_REPO: '"'"''"'"'
+          GOV_TOKEN: ${{ steps.gov-token.outputs.token }}
+          GOVERNANCE_REPO: '"$PLATFORM_ORG/$GOVERNANCE_REPO"'
           CHECK_NAME: "Integration Tests"
         with:
           script: eval(process.env.WAIVER_BYPASS_SCRIPT)
@@ -199,6 +264,13 @@ jobs:
     runs-on: ubuntu-latest
     if: github.base_ref == '"'"'main'"'"' || github.base_ref == '"'"'release'"'"'
     steps:
+      - name: Generate governance app token
+        uses: actions/create-github-app-token@v1
+        id: gov-token
+        with:
+          app-id: ${{ secrets.GOVERNANCE_APP_ID }}
+          private-key: ${{ secrets.GOVERNANCE_APP_PRIVATE_KEY }}
+          owner: '"$PLATFORM_ORG"'
       - uses: actions/checkout@v4
       - id: zap_scan
         uses: zaproxy/action-full-scan@v0.10.0
@@ -211,11 +283,24 @@ jobs:
         if: steps.zap_scan.outcome == '"'"'failure'"'"'
         uses: actions/github-script@v7
         env:
-          GOVERNANCE_READ_TOKEN: ${{ secrets.GOVERNANCE_READ_TOKEN }}
-          GOVERNANCE_REPO: '"'"''"'"'
+          GOV_TOKEN: ${{ steps.gov-token.outputs.token }}
+          GOVERNANCE_REPO: '"$PLATFORM_ORG/$GOVERNANCE_REPO"'
           CHECK_NAME: "DAST Security Scan / ZAP"
         with:
           script: eval(process.env.WAIVER_BYPASS_SCRIPT)
+
+  # ── Coverage Gate ─────────────────────────────────────────────────────────────
+  coverage-check:
+    name: "Coverage Check"
+    needs: [unit-tests]
+    uses: '"$PLATFORM_ORG/$GOVERNANCE_REPO"'/.github/workflows/coverage-report.yml@main
+    with:
+      coverage_pct: ${{ needs.unit-tests.outputs.coverage_pct }}
+      tests_passed: ${{ needs.unit-tests.outputs.tests_passed }}
+      tests_failed: ${{ needs.unit-tests.outputs.tests_failed }}
+      tests_skipped: ${{ needs.unit-tests.outputs.tests_skipped }}
+      threshold: "80"
+    secrets: inherit
 
   # ── General waiver check ──────────────────────────────────────────────────────
   waiver-check:

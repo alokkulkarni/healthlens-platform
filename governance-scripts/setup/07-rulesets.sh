@@ -28,6 +28,7 @@ REQUIRED_CHECKS=$(jq -n '[
   {"context": "Nexus IQ Policy Evaluation"},
   {"context": "Unit Tests & Coverage"},
   {"context": "Integration Tests"},
+  {"context": "Coverage Check"},
   {"context": "waiver-check"}
 ]')
 
@@ -102,7 +103,7 @@ else
     error "Could not create ruleset — you may need org owner rights"
     warn "Create manually: Org Settings → Rules → Rulesets → New ruleset"
     warn "Required checks: CodeQL / Analyze, SonarQube Analysis, Nexus IQ Policy Evaluation,"
-    warn "                 Unit Tests & Coverage, Integration Tests, waiver-check"
+    warn "                 Unit Tests & Coverage, Integration Tests, Coverage Check, waiver-check"
   fi
 fi
 

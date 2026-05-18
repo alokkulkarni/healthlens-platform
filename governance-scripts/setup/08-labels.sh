@@ -32,6 +32,34 @@ LABELS=(
   "repo-provisioned|1f883d|Repository provisioned by repo factory"
   "team-provisioned|0075ca|Team created or updated by team factory"
   "governance|6e40c9|Governance and compliance related"
+  "repo-request|0075ca|Repository creation request"
+  "pending-review|e4a11b|Awaiting initial validation"
+  "needs-platform-review|f0883e|Elevated/critical tier — requires platform-admin approval"
+  "repo-request:approved|1f883d|Approved — provisioning in progress"
+  "repo-request:rejected|cf222e|Repository request rejected"
+  "validation-failed|d73a4a|Request failed validation checks"
+  "provisioning-failed|b60205|Automated provisioning encountered an error"
+  # ── Coverage labels ──────────────────────────────────────────────────────────
+  "coverage-report|0075ca|Auto-maintained coverage tracking issue"
+  "coverage:pass|1f883d|Coverage meets the required threshold"
+  "coverage:below-threshold|cf222e|Coverage is below the required threshold"
+  # ── Access request labels ────────────────────────────────────────────────────
+  "access-request|8250df|Request for temporary elevated repository access"
+  "access-granted|1f883d|Temporary elevated access has been granted"
+  "access-denied|cf222e|Access request was denied"
+  "access-expired|6e7781|Temporary access has expired and been revoked"
+  # ── Org change alert labels ──────────────────────────────────────────────────
+  "org-change-alert|b60205|Direct change to engineering org detected — review required"
+  "org-change:critical|cf222e|Critical org change — may affect security controls"
+  "org-change:warning|e4a11b|Warning-level org change requiring review"
+  "org-change:info|0075ca|Informational org change — verify was expected"
+  # ── Org provisioning labels ──────────────────────────────────────────────────
+  "org-request|8250df|New engineering organisation provisioning request"
+  "org-request:approved-1|e4a11b|First of 2 required approvals received (restricted class)"
+  "org-request:provisioning|f0883e|Approved — org provisioning in progress"
+  "org-request:provisioned|1f883d|Organisation provisioned and governance baseline applied"
+  "org-request:denied|cf222e|Organisation request denied by platform-admins"
+  "org-request:failed|b60205|Org provisioning encountered an error"
 )
 
 for entry in "${LABELS[@]}"; do

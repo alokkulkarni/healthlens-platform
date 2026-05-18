@@ -35,10 +35,17 @@ jobs:
       issues: write
       contents: read
     steps:
+      - name: Generate engineering app token
+        uses: actions/create-github-app-token@v1
+        id: eng-token
+        with:
+          app-id: \${{ secrets.GOVERNANCE_APP_ID }}
+          private-key: \${{ secrets.GOVERNANCE_APP_PRIVATE_KEY }}
+          owner: ${GITHUB_ORG}
       - name: Generate central audit report
         uses: actions/github-script@v7
         env:
-          AUDIT_TOKEN: \${{ secrets.AUDIT_REPORT_TOKEN }}
+          AUDIT_TOKEN: \${{ steps.eng-token.outputs.token }}
           ORG_NAME: ${GITHUB_ORG}
         with:
           github-token: \${{ secrets.GITHUB_TOKEN }}
@@ -60,7 +67,7 @@ jobs:
             const admins = await callAPI(\`/orgs/\${org}/members?role=admin&per_page=100\`);
             const adminList = Array.isArray(admins) && admins.length > 0
               ? admins.map(m => \`- @\${m.login}\`).join('\n')
-              : '_Unable to fetch (check AUDIT_REPORT_TOKEN scope) — query manually: gh api /orgs/{org}/members?role=admin_';
+              : '_Unable to fetch (check GOVERNANCE_APP_ID / app permissions) — query manually: gh api /orgs/{org}/members?role=admin_';
 
             // 2. Open approved waivers
             const openWaivers = await github.rest.issues.listForRepo({ owner: context.repo.owner, repo: context.repo.repo, labels: 'waiver-approved', state: 'open', per_page: 50 });
@@ -72,7 +79,7 @@ jobs:
             const expired = await github.rest.issues.listForRepo({ owner: context.repo.owner, repo: context.repo.repo, labels: 'waiver-expired', state: 'closed', since: oneWeekAgo, per_page: 50 });
 
             // 4. Ruleset bypasses (enterprise audit log)
-            let bypassSection = '> Requires read:audit_log on AUDIT_REPORT_TOKEN.\n> Manual query: gh api \"/enterprises/{enterprise}/audit-log?phrase=action:protected_branch.policy_override\"';
+            let bypassSection = '> Requires read:audit_log permission on the GitHub App.\n> Manual query: gh api \"/enterprises/{enterprise}/audit-log?phrase=action:protected_branch.policy_override\"';
             try {
               const bypasses = await callAPI(\`/enterprises/${GITHUB_ENTERPRISE:-my-enterprise}/audit-log?phrase=action:protected_branch.policy_override&per_page=30\`);
               if (Array.isArray(bypasses) && bypasses.length > 0) {

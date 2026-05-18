@@ -289,18 +289,25 @@ jobs:
       waiver_url: ${{ steps.lookup.outputs.waiver_url }}
       waiver_expiry: ${{ steps.lookup.outputs.waiver_expiry }}
     steps:
+      - name: Generate governance app token
+        uses: actions/create-github-app-token@v1
+        id: gov-token
+        with:
+          app-id: ${{ secrets.GOVERNANCE_APP_ID }}
+          private-key: ${{ secrets.GOVERNANCE_APP_PRIVATE_KEY }}
+          owner: '"$PLATFORM_ORG"'
       - name: Look up waiver
         id: lookup
         uses: actions/github-script@v7
         env:
-          GOVERNANCE_READ_TOKEN: ${{ secrets.GOVERNANCE_READ_TOKEN }}
+          GOV_TOKEN: ${{ steps.gov-token.outputs.token }}
           CHECK_NAME: ${{ inputs.check_name || '"'"''"'"' }}
           PR_NUMBER: ${{ inputs.pr_number || github.event.pull_request.number }}
           CALLING_REPO: ${{ github.repository }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const token     = process.env.GOVERNANCE_READ_TOKEN;
+            const token = process.env.GOV_TOKEN;
             const checkName = process.env.CHECK_NAME;
             const prNumber  = process.env.PR_NUMBER;
             const callingRepo = process.env.CALLING_REPO;
