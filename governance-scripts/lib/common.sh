@@ -169,23 +169,64 @@ check_prereqs() {
   if [[ $missing -eq 1 ]]; then
     echo ""
     info "Install missing tools:"
-    echo "  gh:      https://cli.github.com/"
+    echo "  gh:      https://cli.github.com/  (brew install gh)"
     echo "  jq:      brew install jq"
     echo "  base64:  included in macOS/Linux coreutils"
     exit 1
   fi
 
-  if gh auth status &>/dev/null; then
-    local user
-    user=$(gh api /user --jq '.login' 2>/dev/null)
-    success "  Authenticated as: $user"
+  # ── GitHub auth check — prompt login if not authenticated ──────────────────
+  if ! gh auth status &>/dev/null; then
+    echo ""
+    warn "GitHub CLI is not authenticated."
+    info "Starting interactive login — follow the prompts below:"
+    echo ""
+    if ! gh auth login; then
+      error "Login failed. Please run 'gh auth login' manually and retry."
+      exit 1
+    fi
+    echo ""
+    # Re-check after login
+    if ! gh auth status &>/dev/null; then
+      error "Still not authenticated after login attempt. Exiting."
+      exit 1
+    fi
+  fi
+
+  local user
+  user=$(gh api /user --jq '.login' 2>/dev/null)
+  success "  Authenticated as: ${BOLD}${user}${NC}"
+
+  # ── Scope / permission advisory ────────────────────────────────────────────
+  echo ""
+  info "Required GitHub permissions for this script to run fully:"
+  echo "  • Org owner of the governance org     (create repos, teams, rulesets, push files)"
+  echo "  • Org owner of the engineering org    (set policies, create teams, rulesets)"
+  echo "  • Enterprise owner (optional)         (enforce 2FA enterprise-wide)"
+  echo ""
+  info "Your token scopes (check if 'admin:org' and 'repo' are present):"
+  gh auth status 2>&1 | grep -E "Token scopes|Logged in" | sed 's/^/  /'
+  echo ""
+}
+
+# ── Org owner verification ────────────────────────────────────────────────────
+# check_org_owner ORG — warns if the authenticated user is not an owner
+check_org_owner() {
+  local org="$1"
+  local user
+  user=$(gh api /user --jq '.login' 2>/dev/null)
+  local role
+  role=$(gh api "/orgs/$org/memberships/$user" --jq '.role' 2>/dev/null || echo "unknown")
+  if [[ "$role" == "admin" ]]; then
+    success "  Org owner confirmed: $org"
   else
-    error "  GitHub CLI not authenticated. Run: gh auth login"
-    exit 1
+    warn "  You are not an owner of '$org' (role: ${role:-not a member})"
+    warn "  Some steps (org policies, rulesets) require org owner rights."
+    warn "  Ask an org owner to run this script, or grant yourself owner access first."
   fi
 }
 
-# ── Config persistence ────────────────────────────────────────────────────────
+
 # Store and load config so setup scripts share values
 
 CONFIG_FILE="${GOVERNANCE_CONFIG:-$HOME/.github-governance-setup.env}"

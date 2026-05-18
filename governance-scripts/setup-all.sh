@@ -94,6 +94,12 @@ echo -e "  Governance repo:  ${BOLD}$PLATFORM_ORG/$GOVERNANCE_REPO${NC}"
 echo -e "  Config saved to:  ${DIM}$CONFIG_FILE${NC}"
 echo ""
 
+# ── Verify org owner access before proceeding ─────────────────────────────────
+step "Verifying org owner access"
+check_org_owner "$PLATFORM_ORG"
+[[ "$PLATFORM_ORG" != "$GITHUB_ORG" ]] && check_org_owner "$GITHUB_ORG"
+echo ""
+
 confirm "Proceed with full setup using these values?" || { info "Setup cancelled."; exit 0; }
 
 # ── Step selection ─────────────────────────────────────────────────────────────
